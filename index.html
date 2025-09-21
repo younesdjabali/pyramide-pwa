@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pyramide des tâches</title>
+  <meta name="theme-color" content="#0ea5e9">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" sizes="192x192" href="icon-192.png">
+  <link rel="icon" sizes="512x512" href="icon-512.png">
+  <style>
+    :root{
+      --panel:#111827ee; /* gray-900 */
+      --accent:#22d3ee; /* cyan-400 */
+      --accent-2:#06b6d4; /* cyan-500 */
+      --muted:#64748b; /* slate-500 */
+      --danger:#ef4444; /* red-500 */
+      --sky:#7dd3fc; /* azur */
+      --cloud:#f1f5f9; /* nuages très clairs */
+      --grass:#86efac; /* plaine */
+      --flower:#f472b6; /* fleurs */
+      --height-blue:#2563eb; /* texte hauteur */
+    }
+    html,body{height:100%;}
+    body{margin:0;background:var(--sky);font-family:system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";color:#0b1229;}
+    .wrap{display:grid;grid-template-rows:auto 1fr;min-height:100vh}
+    header{display:flex;gap:.75rem;align-items:center;justify-content:space-between;padding:.9rem 1rem;border-bottom:1px solid #cbd5e1;background:#e0f2fecc;backdrop-filter:blur(6px);position:sticky;top:0;z-index:20}
+    h1{font-size:1.05rem;margin:0;letter-spacing:.3px;font-weight:800;color:#0b1229}
+    header .stats{display:flex;gap:1rem;font-size:.85rem;color:#334155}
+    header .stats span strong{color:#0b1229}
+
+    /* Tabs */
+    .tabs{display:flex;gap:.35rem;align-items:center}
+    .tab{appearance:none;border:none;border-radius:999px;padding:.45rem .8rem;font-weight:700;background:#e2e8f0;color:#0b1229;cursor:pointer}
+    .tab.active{background:#0ea5e9;color:#001018}
+    .notify-btn{appearance:none;border:none;border-radius:999px;padding:.45rem .8rem;font-weight:800;background:#10b981;color:#001018;cursor:pointer;margin-left:.4rem}
+
+    .view{display:none}
+    .view.active{display:block}
+
+    /* HOME */
+    .home-grid{display:grid;grid-template-columns:1fr;gap:.75rem;padding:.75rem}
+    @media(min-width:980px){.home-grid{grid-template-columns:380px 1fr;}}
+
+    .card{background:#0b1229cc;border:1px solid #1f2937;border-radius:16px;color:#e5e7eb;box-shadow:0 10px 30px #00000030}
+    .card h2{font-size:1rem;margin:.25rem 0 0 .25rem}
+
+    .punish-card{background:#ffffff; color:#0b1229; border:2px solid #0ea5e9; border-radius:16px; padding:1rem; box-shadow:0 10px 30px #00000015}
+    .punish-title{font-weight:900; font-size:1.05rem; margin:0 0 .5rem 0}
+    .punish-sub{font-size:.85rem; color:#334155; margin:.25rem 0 .75rem}
+    .punish-row{display:flex; gap:.5rem}
+    .punish-row input[type="text"]{flex:1;background:#f8fafc;border:1px solid #cbd5e1;color:#0b1229;border-radius:12px;padding:.7rem .85rem;font-size:1rem;outline:none}
+    .btn{appearance:none;border:none;border-radius:12px;padding:.8rem 1rem;background:var(--accent);color:#001018;font-weight:800;box-shadow:0 8px 20px #22d3ee30;cursor:pointer}
+    .btn.secondary{background:#0b1229;color:#cbd5e1;border:1px solid #1f2937;box-shadow:none}
+    .btn.danger{background:var(--danger);color:#fff}
+
+    .legend{position:absolute;top:10px;right:10px;display:flex;gap:.5rem;align-items:center;background:#0b1229cc;border:1px solid #1f2937;border-radius:999px;padding:.35rem .6rem;font-size:.8rem;color:#e5e7eb;z-index:10}
+
+    .height-chip{position:absolute;top:10px;left:10px;background:#e0f2ffcc;border:1px solid #93c5fd;color:var(--height-blue);font-weight:900;border-radius:999px;padding:.35rem .6rem;font-size:.85rem;z-index:10}
+
+    /* Tasks view */
+    .tasks-wrap{display:grid;grid-template-columns:1fr;gap:.75rem;padding:.75rem}
+    .toolbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+    input[type="text"], input[type="number"], select{background:#0b1229;border:1px solid #1f2937;color:#e5e7eb;border-radius:12px;padding:.7rem .85rem;font-size:1rem;outline:none}
+    select{min-width:160px}
+
+    .chips{display:flex;gap:.5rem;flex-wrap:wrap}
+    .chip{font-size:.8rem;padding:.35rem .6rem;border-radius:999px;border:1px solid #1f2937;background:#0b1229;color:#cbd5e1;cursor:pointer}
+
+    table{width:100%;border-collapse:separate;border-spacing:0 .6rem}
+    thead th{font-size:.85rem;color:#cbd5e1;text-align:left;padding:.2rem .4rem}
+    tbody tr{background:#0b1229;border:1px solid #1f2937;border-radius:12px}
+    tbody td{padding:.6rem .7rem}
+    tbody tr td:first-child{border-top-left-radius:12px;border-bottom-left-radius:12px}
+    tbody tr td:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px}
+    .title{font-weight:800}
+
+    .circle-timer{position:relative;width:180px;height:180px}
+    .circle-timer canvas{position:absolute;inset:0}
+    .circle-center{position:absolute;inset:18px;background:#0b1229;border-radius:999px;display:grid;place-items:center;border:1px solid #1f2937;color:#e5e7eb;text-align:center;padding:.5rem}
+    .circle-center .big{font-variant-numeric:tabular-nums;font-weight:900;font-size:1.4rem}
+    .circle-center .small{font-size:.8rem;color:#93a3b8}
+
+    /* Canvas scene (scrollable pyramid) */
+    .scene-wrap{position:relative;overflow:hidden;border-radius:16px}
+    canvas#scene{width:100%;height:65vh;display:block;background:transparent;touch-action:none}
+    .ground{position:absolute;left:0;right:0;bottom:0;height:80px;background:linear-gradient(0deg,var(--grass) 0%, #bbf7d0 80%, transparent 100%); border-top:2px solid #16a34a}
+
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0b1229;border:1px solid #1f2937;color:#e5e7eb;border-radius:12px;padding:.6rem .9rem;box-shadow:0 10px 20px #00000045;opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:50}
+    .toast.show{opacity:1}
+
+    .color-dot{display:inline-block;width:.9rem;height:.9rem;border-radius:999px;margin-right:.35rem;vertical-align:middle}
+
+    .badge-card{background:#ffffff;color:#0b1229;border:2px dashed #0ea5e9;border-radius:16px;padding:1rem}
+    .badges{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem}
+    .badge{display:flex;align-items:center;gap:.35rem;border:1px solid #dbeafe;background:#eff6ff;border-radius:999px;padding:.35rem .6rem;font-weight:800;color:#1d4ed8}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>🏛️ Pyramide des tâches</h1>
+      <div class="stats">
+        <span>Briques: <strong id="stat-bricks">0</strong></span>
+        <span>En cours: <strong id="stat-active">0</strong></span>
+        <span>Streak: <strong id="stat-streak">0</strong></span>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-tab="home">Accueil</button>
+        <button class="tab" data-tab="tasks">Tâches</button>
+        <button id="btn-notify" class="notify-btn">🔔 Activer notifications</button>
+      </div>
+    </header>
+
+    <!-- HOME VIEW -->
+    <main id="home" class="view active">
+      <div class="home-grid">
+        <section class="punish-card">
+          <div class="punish-title">Punition du jour</div>
+          <div class="punish-sub">Fixe ta punition <strong>chaque matin</strong>. Si <em>toutes</em> les tâches du jour ne sont pas validées, les briques du jour se brisent et tu devras effectuer cette punition.</div>
+          <div class="punish-row">
+            <input id="punish-input" type="text" placeholder="Ex: 100 pompes + 30 min de course" />
+            <button id="punish-save" class="btn">Définir</button>
+          </div>
+          <div id="punish-current" style="margin-top:.6rem;font-weight:800"></div>
+          <div id="punish-due" style="margin-top:.4rem;color:#b91c1c;font-weight:800"></div>
+        </section>
+
+        <section class="card" style="padding:1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+          <!-- Circle timer -->
+          <div class="circle-timer">
+            <canvas id="dial"></canvas>
+            <div class="circle-center">
+              <div id="dial-title" class="small">Aucune tâche</div>
+              <div class="big" id="dial-time">00:00</div>
+              <div class="small" id="dial-mode">mode: —</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.5rem">
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+              <button id="btn-start" class="btn">Démarrer</button>
+              <button id="btn-pause" class="btn secondary">Pause</button>
+              <button id="btn-done" class="btn secondary">Terminer ✓</button>
+            </div>
+            <div style="color:#93a3b8;font-size:.9rem">Choisis une tâche dans l’onglet <strong>Tâches</strong> pour lancer un <em>minuteur</em> (durée fixée) ou un <em>chronomètre</em> (durée libre).</div>
+          </div>
+        </section>
+
+        <section class="card scene-wrap">
+          <div class="legend">🧱 <span id="legend-count">0</span> briques</div>
+          <div class="height-chip" id="height-chip">Hauteur: 0 m</div>
+          <canvas id="scene"></canvas>
+          <div class="ground"></div>
+        </section>
+
+        <section class="badge-card">
+          <div style="font-weight:900">Badges</div>
+          <div class="badges" id="badges"></div>
+        </section>
+      </div>
+    </main>
+
+    <!-- TASKS VIEW -->
+    <main id="tasks" class="view">
+      <div class="tasks-wrap">
+        <section class="card" style="padding:1rem">
+          <h2>Nouvelle tâche</h2>
+          <div class="toolbar">
+            <input id="task-title" type="text" placeholder="Ex: Réviser HGG — chap. 3" />
+            <input id="task-minutes" type="number" min="1" step="1" value="25" />
+            <select id="task-mode">
+              <option value="timer">Minuteur (min)</option>
+              <option value="chrono">Chronomètre</option>
+            </select>
+            <select id="task-category"></select>
+            <button id="btn-add" class="btn">Ajouter</button>
+          </div>
+          <div class="chips" id="chips"></div>
+        </section>
+
+        <section class="card" style="padding:1rem">
+          <h2>Toutes les tâches</h2>
+          <div class="toolbar" style="margin-bottom:.5rem">
+            <select id="filter-day">
+              <option value="today">Aujourd’hui</option>
+              <option value="all">Toutes</option>
+            </select>
+            <select id="filter-cat"><option value="all">Toutes catégories</option></select>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Catégorie</th>
+                <th>Titre</th>
+                <th>Mode</th>
+                <th>Durée</th>
+                <th>Jour</th>
+                <th>Statut</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="task-table"></tbody>
+          </table>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  // ---------- State & Persistence ----------
+  const LS_KEY = 'pyramid-app-v3';
+  const BRICK_HEIGHT_M = 0.3; // 30 cm par brique
+
+  const categories = [
+    {key:'HGG', name:'HGG', color:'#f97316'},
+    {key:'Maths', name:'Maths', color:'#60a5fa'},
+    {key:'Espagnol', name:'Espagnol', color:'#f43f5e'},
+    {key:'Anglais', name:'Anglais', color:'#3b82f6'},
+    {key:'Philo', name:'Philo', color:'#a78bfa'},
+    {key:'SES', name:'SES', color:'#22c55e'},
+    {key:'Muscu', name:'Muscu', color:'#10b981'},
+    {key:'Autre', name:'Autre', color:'#fbbf24'},
+  ];
+
+  const state = {
+    tasks: [], // {id,title,mins,mode:'timer'|'chrono',category,plannedFor,status:'queued'|'active'|'done'|'failed', createdAt}
+    bricks: [], // {id, date, category, color}
+    badges: [], // {count, date}
+    activeId: null,
+    streak: 0,
+    lastDoneDay: null,
+    punishments: {}, // { [YYYY-MM-DD]: {text:string, due:boolean} }
+    lastCheckedDate: null,
+  };
+
+  function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  function load(){ try{ const data = JSON.parse(localStorage.getItem(LS_KEY)||'null'); if(!data) return; Object.assign(state, data); }catch(e){ console.warn(e); } }
+  load();
+
+  // ---------- Utils ----------
+  const $ = sel=>document.querySelector(sel);
+  function todayStr(){ const d=new Date(); const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
+  function offsetDate(days){ const d=new Date(); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
+  function fmt(sec){ sec=Math.max(0,Math.floor(sec)); const m=String(Math.floor(sec/60)).padStart(2,'0'); const s=String(sec%60).padStart(2,'0'); return `${m}:${s}`; }
+  function toast(msg){ const el=$('#toast'); el.textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'), 1600); }
+  function byId(arr,id){ return arr.find(x=>x.id===id); }
+
+  // ---------- Tabs ----------
+  document.querySelectorAll('.tab').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      $('#'+b.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ---------- Notifications ----------
+  function canNotify(){ return 'Notification' in window; }
+  async function enableNotify(){
+    if(!canNotify()){ toast('Notifications non disponibles'); return; }
+    let perm = Notification.permission;
+    if(perm !== 'granted'){ perm = await Notification.requestPermission(); }
+    if(perm === 'granted'){ toast('Notifications activées ✅'); }
+    else { toast('Notifications refusées'); }
+  }
+  function notify(title, options){
+    try{
+      if(!canNotify()) return;
+      if(Notification.permission === 'granted'){
+        const n = new Notification(title, Object.assign({silent:false}, options||{}));
+        if('vibrate' in navigator) navigator.vibrate([80,40,80]);
+      }
+    }catch(e){ console.warn('notify error', e); }
+  }
+  document.getElementById('btn-notify').onclick = enableNotify;
+
+  // ---------- Punishment ----------
+  function renderPunishment(){
+    const t = todayStr();
+    const p = state.punishments[t];
+    document.getElementById('punish-current').textContent = p && p.text ? `Aujourd’hui: ${p.text}` : 'Aucune punition définie.';
+    const y = offsetDate(-1);
+    const py = state.punishments[y];
+    document.getElementById('punish-due').textContent = py && py.due ? `⚠️ Punition en attente pour ${y}: ${py.text}` : '';
+  }
+  document.getElementById('punish-save').onclick = ()=>{
+    const txt = document.getElementById('punish-input').value.trim();
+    if(!txt){ toast('Écris ta punition du jour.'); return; }
+    const t = todayStr();
+    state.punishments[t] = {text:txt, due:false};
+    document.getElementById('punish-input').value='';
+    save(); renderPunishment(); toast('Punition définie ✅');
+  };
+
+  // ---------- Category setup ----------
+  const catSel = document.getElementById('task-category');
+  const filterCatSel = document.getElementById('filter-cat');
+  const chipsWrap = document.getElementById('chips');
+  function initCategories(){
+    catSel.innerHTML = categories.map(c=>`<option value="${c.key}">${c.name}</option>`).join('');
+    filterCatSel.innerHTML = `<option value="all">Toutes catégories</option>` + categories.map(c=>`<option value="${c.key}">${c.name}</option>`).join('');
+    chipsWrap.innerHTML = categories.map(c=>`<button class="chip" data-cat="${c.key}"><span class="color-dot" style="background:${c.color}"></span>${c.name}</button>`).join('');
+    chipsWrap.querySelectorAll('.chip').forEach(ch=> ch.onclick = ()=>{ catSel.value = ch.dataset.cat; });
+  }
+  initCategories();
+
+  // ---------- Tasks CRUD & List ----------
+  function addTask(){
+    const title = document.getElementById('task-title').value.trim();
+    const mins = parseInt(document.getElementById('task-minutes').value,10)||25;
+    const mode = document.getElementById('task-mode').value;
+    const category = catSel.value;
+    if(!title){ toast('Ajoute un titre.'); return; }
+    const tday = todayStr();
+    if(!(state.punishments[tday] && state.punishments[tday].text)){
+      toast('⚠️ Pense à définir la punition du jour.');
+    }
+    const id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now())+Math.random();
+    state.tasks.push({id,title,mins,mode,category,plannedFor:tday,status:'queued',createdAt:Date.now(),remainingSec: mode==='timer'? mins*60 : 0, elapsedSec:0});
+    document.getElementById('task-title').value='';
+    save(); renderTaskTable(); toast('Tâche ajoutée');
+  }
+  document.getElementById('btn-add').onclick = addTask;
+
+  function renderTaskTable(){
+    const tbody = document.getElementById('task-table');
+    const fd = document.getElementById('filter-day').value; const fc = filterCatSel.value;
+    let items = [...state.tasks];
+    if(fd==='today') items = items.filter(t=>t.plannedFor===todayStr());
+    if(fc!=='all') items = items.filter(t=>t.category===fc);
+    items.sort((a,b)=> a.plannedFor===b.plannedFor ? a.createdAt-b.createdAt : (a.plannedFor>b.plannedFor? -1:1));
+    tbody.innerHTML = items.map(t=>{
+      const cat = categories.find(c=>c.key===t.category);
+      const color = cat?cat.color:'#fbbf24';
+      const status = t.status==='done'?'✅ Terminé': t.status==='active'?'⏳ En cours': t.status==='failed'?'❌ Échoué':'🟦 En attente';
+      return `<tr>
+        <td><span class="color-dot" style="background:${color}"></span>${t.category}</td>
+        <td class="title">${escapeHtml(t.title)}</td>
+        <td>${t.mode}</td>
+        <td>${t.mode==='timer'? t.mins+' min':'—'}</td>
+        <td>${t.plannedFor}</td>
+        <td>${status}</td>
+        <td>
+          <button class="btn secondary" data-act="start-timer" data-id="${t.id}">▶ Timer</button>
+          <button class="btn secondary" data-act="start-chrono" data-id="${t.id}">▶ Chrono</button>
+          <button class="btn secondary" data-act="done" data-id="${t.id}">✓</button>
+          <button class="btn danger" data-act="del" data-id="${t.id}">🗑</button>
+        </td>
+      </tr>`;
+    }).join('');
+    tbody.querySelectorAll('button').forEach(b=>{
+      const id=b.dataset.id; const act=b.dataset.act;
+      b.onclick = ()=>{
+        if(act==='del'){ delTask(id); }
+        if(act==='done'){ completeTask(id,false); }
+        if(act==='start-timer'){ startTask(id,'timer'); }
+        if(act==='start-chrono'){ startTask(id,'chrono'); }
+      };
+    });
+    updateStats();
+  }
+  document.getElementById('filter-day').onchange = renderTaskTable; document.getElementById('filter-cat').onchange = renderTaskTable;
+
+  function delTask(id){ if(state.activeId===id) stopTimer(); state.tasks = state.tasks.filter(t=>t.id!==id); save(); renderTaskTable(); }
+
+  // ---------- Timer / Chrono + Dial ----------
+  let ticker=null, startedAt=0, activeMode='timer';
+  const dial = document.getElementById('dial');
+  const dg = dial.getContext('2d');
+  function resizeDial(){ dial.width=180*devicePixelRatio; dial.height=180*devicePixelRatio; }
+  resizeDial(); addEventListener('resize', resizeDial);
+
+  function renderDial(){
+    const PIX = devicePixelRatio||1; const W=dial.width, H=dial.height; const cx=W/2, cy=H/2; const R= (W/2)-8*PIX;
+    dg.clearRect(0,0,W,H);
+    // bg ring
+    dg.lineWidth = 10*PIX; dg.strokeStyle = 'rgba(255,255,255,0.25)'; dg.beginPath(); dg.arc(cx,cy,R,0,Math.PI*2); dg.stroke();
+
+    const t = currentTask();
+    let prog=0;
+    if(t){ if(activeMode==='timer'){ const total=t.mins*60; const left=t.remainingSec; prog = Math.min(1, Math.max(0, (total-left)/total)); } else { const e=t.elapsedSec||0; const total=Math.max(1, (t.mins||25)*60); prog = Math.min(1, (e%total)/total); }
+    }
+    // progress ring
+    dg.strokeStyle = '#0ea5e9'; dg.beginPath(); dg.arc(cx,cy,R,-Math.PI/2, -Math.PI/2 + prog*2*Math.PI); dg.stroke();
+
+    // brick-build animation (inside)
+    const bx = cx-40*PIX, by = cy+20*PIX, bw=80*PIX, bh=36*PIX;
+    dg.save();
+    roundRect(dg,bx,by-bh,bw,bh,6*PIX,'#fbbf24');
+    dg.save(); dg.beginPath(); dg.rect(bx, by - bh*prog, bw, bh*prog); dg.clip(); roundRect(dg,bx,by-bh,bw,bh,6*PIX,'#f59e0b');
+    dg.fillStyle='rgba(0,0,0,0.15)'; for(let i=0;i<Math.floor(bw/(14*PIX));i++) dg.fillRect(bx+6*PIX + i*14*PIX, by-bh+4*PIX, 8*PIX, 3*PIX);
+    dg.restore(); dg.fillStyle='#b45309'; dg.fillRect(bx,by-4*PIX,bw,4*PIX);
+    dg.restore();
+  }
+
+  function roundRect(g,x,y,w,h,r,fillStyle){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); if(fillStyle){ g.fillStyle=fillStyle; g.fill(); } }
+
+  function currentTask(){ return state.tasks.find(t=>t.id===state.activeId) || null; }
+
+  function startTask(id, mode){
+    const t = byId(state.tasks,id); if(!t) return;
+    activeMode = mode || t.mode || 'timer';
+    state.activeId = id; t.status='active';
+    if(activeMode==='timer' && (t.remainingSec==null)) t.remainingSec = t.mins*60;
+    if(activeMode==='chrono') t.elapsedSec = t.elapsedSec||0;
+    startedAt = Date.now();
+    document.getElementById('dial-title').textContent = t.title;
+    document.getElementById('dial-mode').textContent = 'mode: ' + (activeMode==='timer'?'minuteur':'chronomètre');
+    tick(); ticker = setInterval(tick, 250);
+    save(); renderTaskTable(); updateStats();
+  }
+  function stopTimer(){ clearInterval(ticker); ticker=null; }
+  function pauseTask(){ const t=currentTask(); if(!t) return; const dt=(Date.now()-startedAt)/1000; if(activeMode==='timer'){ t.remainingSec=Math.max(0,(t.remainingSec||0)-dt); } else { t.elapsedSec=(t.elapsedSec||0)+dt; } t.status='queued'; state.activeId=null; stopTimer(); save(); renderTaskTable(); updateStats(); renderDial(); toast('Pause'); }
+  function tick(){ const t=currentTask(); if(!t){ stopTimer(); return; } const dt=(Date.now()-startedAt)/1000; if(activeMode==='timer'){ const left=Math.max(0,(t.remainingSec||0)-dt); t._liveLeft=left; document.getElementById('dial-time').textContent=fmt(left); if(left<=0){ completeTask(t.id,true); return; } } else { const el=(t.elapsedSec||0)+dt; t._liveElapsed=el; document.getElementById('dial-time').textContent=fmt(el); }
+    renderDial(); }
+
+  function completeTask(id, fromTimer){
+    const t = byId(state.tasks,id); if(!t) return;
+    if(activeMode==='timer'){ t.remainingSec=0; }
+    if(activeMode==='chrono'){ const dt=(Date.now()-startedAt)/1000; t.elapsedSec=(t.elapsedSec||0)+dt; }
+    t.status='done'; if(state.activeId===id){ state.activeId=null; stopTimer(); }
+    const today = todayStr(); if(state.lastDoneDay===today){ state.streak+=1; } else { state.streak=1; state.lastDoneDay=today; }
+    const cat = categories.find(c=>c.key===t.category);
+    state.bricks.push({id:(crypto && crypto.randomUUID? crypto.randomUUID(): String(Date.now())+Math.random()), date:t.plannedFor, category:t.category, color:cat?cat.color:'#fbbf24'});
+    spawnFallingBrick();
+
+    // Milestone badges every 50 bricks
+    const count = state.bricks.length;
+    if(count>0 && count % 50 === 0){
+      state.badges.push({count, date:today});
+      triggerConfetti();
+      renderBadges();
+      toast(`🏅 Badge ${count} briques !`);
+    }
+
+    save(); renderTaskTable(); updateStats(); renderDial();
+
+    // Local notification on timer end
+    if(fromTimer){
+      notify('Session terminée ✔️', { body:`${t.title} accomplie. Brique ajoutée !` });
+    }
+  }
+
+  document.getElementById('btn-start').onclick=()=>{
+    const todayQueued = state.tasks.find(t=>t.plannedFor===todayStr() && t.status==='queued');
+    if(todayQueued) startTask(todayQueued.id, todayQueued.mode||'timer'); else toast('Aucune tâche en file (aujourd’hui).');
+  };
+  document.getElementById('btn-pause').onclick=pauseTask;
+  document.getElementById('btn-done').onclick=()=>{ if(state.activeId) completeTask(state.activeId,false); };
+
+  // ---------- Daily rollover (destroy yesterday bricks if missed) ----------
+  function rolloverCheck(){
+    const today = todayStr(); if(state.lastCheckedDate===today) return;
+    const y = offsetDate(-1);
+    const yTasks = state.tasks.filter(t=>t.plannedFor===y);
+    if(yTasks.length){
+      const done = yTasks.filter(t=>t.status==='done').length;
+      if(done < yTasks.length){
+        state.bricks = state.bricks.filter(b=>b.date!==y);
+        if(!state.punishments[y]) state.punishments[y] = {text:'(non définie)', due:true}; else state.punishments[y].due=true;
+        toast('❌ Objectifs d’hier non tenus : briques brisées. Punition due.');
+      }
+      yTasks.filter(t=>t.status!=='done').forEach(t=> t.status='failed');
+    }
+    state.lastCheckedDate=today; save();
+  }
+  rolloverCheck(); setInterval(()=>{ rolloverCheck(); }, 60*1000);
+
+  // ---------- Stats ----------
+  function updateStats(){
+    document.getElementById('stat-bricks').textContent = String(state.bricks.length);
+    const active = state.tasks.some(t=>t.status==='active') ? 1 : 0;
+    document.getElementById('stat-active').textContent = String(active);
+    document.getElementById('stat-streak').textContent = String(state.streak);
+    document.getElementById('legend-count').textContent = String(state.bricks.length);
+    updateHeightChip();
+  }
+
+  // ---------- Pyramid Scene (scrollable) ----------
+  const scene = document.getElementById('scene');
+  const ctx = scene.getContext('2d');
+  let W=0,H=0, PIX=window.devicePixelRatio||1;
+  let camY = 0; // camera offset (positive = look up)
+  function resizeScene(){ const r=scene.getBoundingClientRect(); W=Math.floor(r.width*PIX); H=Math.floor(r.height*PIX); scene.width=W; scene.height=H; }
+  resizeScene(); addEventListener('resize', resizeScene);
+
+  // Inputs for scroll/pan
+  let dragging=false, lastY=0;
+  scene.addEventListener('wheel',(e)=>{ camY += e.deltaY*0.6; clampCam(); });
+  scene.addEventListener('pointerdown',(e)=>{ dragging=true; lastY=e.clientY; scene.setPointerCapture(e.pointerId); });
+  scene.addEventListener('pointermove',(e)=>{ if(!dragging) return; const dy=(e.clientY-lastY); camY -= dy*1.2; lastY=e.clientY; clampCam(); });
+  scene.addEventListener('pointerup',()=>{ dragging=false; });
+  function clampCam(){ const maxY = Math.max(0, pyramidHeightPx() - H + 120*PIX); camY = Math.max(0, Math.min(camY, maxY)); }
+
+  function pyramidLayout(count){
+    let r=0,total=0; while(total<count){ r++; total+=r; }
+    const bricks=[]; const margin=16*PIX; const baseY = groundY();
+    const baseWidth = Math.min(W-2*margin, Math.max(220*PIX, Math.min(W*0.9, 820*PIX)));
+    const unitW = Math.max(28*PIX, Math.min(72*PIX, baseWidth / r));
+    const unitH = unitW*0.5;
+    let placed=0; for(let row=0; row<r && placed<count; row++){
+      const n=r-row; const rowWidth = n*unitW; const startX = (W-rowWidth)/2; const y = baseY - row*unitH;
+      for(let i=0;i<n && placed<count;i++){ const x = startX + i*unitW; bricks.push({x,y,w:unitW,h:unitH,row}); placed++; }
+    }
+    return bricks;
+  }
+  function groundY(){ return H - 80*PIX + camY; }
+  function pyramidHeightPx(){ const targets = pyramidLayout(Math.max(1,state.bricks.length)); if(!targets.length) return 0; const top=targets[targets.length-1].y; return groundY()-top; }
+
+  // Falling bricks
+  const falling=[]; // {x,y,w,h,vy,rot,vr,target,color}
+  function spawnFallingBrick(){
+    const targets = pyramidLayout(state.bricks.length);
+    const target = targets[targets.length-1];
+    const x = target.x + target.w/2 + (Math.random()*80-40)*PIX;
+    const color = state.bricks[state.bricks.length-1]?.color || '#fbbf24';
+    falling.push({ x:x, y:camY - 60*PIX, w:target.w, h:target.h, vy:0, rot: (Math.random()*0.3-0.15), vr: (Math.random()*0.02-0.01), target, color });
+  }
+
+  function existingBricks(){ const targets=pyramidLayout(state.bricks.length); return targets.map((t,i)=>({x:t.x,y:t.y,w:t.w,h:t.h, rot:0, color: state.bricks[i]?.color || '#fbbf24'})); }
+  let staticBricks = existingBricks();
+
+  function drawBrick(g,b, glow=false){
+    g.save(); g.translate(b.x + b.w/2, b.y + b.h/2); g.rotate(b.rot||0); g.translate(-b.w/2, -b.h/2);
+    const r=6*PIX; g.fillStyle = b.color || '#fbbf24';
+    g.beginPath(); g.moveTo(r,0); g.arcTo(b.w,0,b.w,b.h,r); g.arcTo(b.w,b.h,0,b.h,r); g.arcTo(0,b.h,0,0,r); g.arcTo(0,0,b.w,0,r); g.closePath(); g.fill();
+    g.fillStyle='rgba(0,0,0,0.18)'; g.fillRect(0,b.h-4*PIX,b.w,4*PIX);
+    g.fillStyle='rgba(0,0,0,0.12)'; for(let i=0;i<Math.floor(b.w/(14*PIX));i++){ const sx=6*PIX + i*14*PIX; g.fillRect(sx,4*PIX,8*PIX,3*PIX); }
+    if(glow){ g.strokeStyle='rgba(255,255,255,0.6)'; g.lineWidth=1*PIX; g.strokeRect(0,0,b.w,b.h); }
+    g.restore();
+  }
+
+  // Confetti system
+  let confetti=[]; // {x,y,vx,vy,rot,vr,size,color,ttl}
+  const confettiColors=['#fde047','#60a5fa','#34d399','#f43f5e','#a78bfa','#f97316'];
+  function triggerConfetti(){
+    const n = 220; const baseY = Math.max(40*PIX, 200*PIX - camY*0.3);
+    for(let i=0;i<n;i++){
+      const a = Math.random()*Math.PI*2; const sp = 2 + Math.random()*4;
+      confetti.push({
+        x: Math.random()*W,
+        y: baseY + (Math.random()*40-20)*PIX,
+        vx: Math.cos(a)*sp*PIX,
+        vy: (Math.sin(a)*sp - 2)*PIX,
+        rot: Math.random()*Math.PI,
+        vr: (Math.random()*0.2-0.1),
+        size: (4+Math.random()*6)*PIX,
+        color: confettiColors[i%confettiColors.length],
+        ttl: 180 + Math.floor(Math.random()*80)
+      });
+    }
+  }
+  function updateConfetti(){
+    const g=0.12*PIX;
+    for(const p of confetti){ p.vy += g; p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.ttl--; }
+    confetti = confetti.filter(p=> p.ttl>0 && p.y<groundY()+20*PIX);
+  }
+  function renderConfetti(){
+    for(const p of confetti){ ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle=p.color; ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6); ctx.restore(); }
+  }
+
+  function updateScene(){
+    for(const b of falling){ b.vy += 0.8*PIX; b.y += b.vy; b.rot += b.vr; if(b.y + b.h >= b.target.y){ b.y = b.target.y; b.vy=0; b.rot=0; b.vr=0; b.placed=true; } }
+    const still=[]; let placed=false; for(const b of falling){ if(b.placed) { placed=true; } else still.push(b); } falling.length=0; falling.push(...still); if(placed) staticBricks = existingBricks();
+    updateConfetti();
+  }
+
+  function drawCloud(g,x,y,s){ g.fillStyle='rgba(255,255,255,0.9)'; g.beginPath(); g.arc(x,y,20*s,0,Math.PI*2); g.arc(x+25*s,y+5*s,18*s,0,Math.PI*2); g.arc(x-20*s,y+10*s,16*s,0,Math.PI*2); g.closePath(); g.fill(); }
+  function drawFlowers(g){ const base=groundY(); for(let i=0;i<Math.floor(W/ (30*PIX)); i++){ const x = (i*30*PIX + (i%2?10*PIX:0)); const stemH = 16*PIX; g.strokeStyle='#16a34a'; g.lineWidth=2*PIX; g.beginPath(); g.moveTo(x,base-2*PIX); g.lineTo(x,base-stemH); g.stroke(); g.fillStyle= (i%3===0?'#f472b6': i%3===1? '#fb7185' : '#facc15'); g.beginPath(); g.arc(x, base-stemH, 4*PIX, 0, Math.PI*2); g.fill(); } }
+
+  function renderScene(){
+    ctx.clearRect(0,0,W,H);
+    const sky = ctx.createLinearGradient(0,0,0,H); sky.addColorStop(0,'#7dd3fc'); sky.addColorStop(1,'#93c5fd'); ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+    const cy = camY*0.15; for(let i=0;i<8;i++){ drawCloud(ctx, (i*W/8 + (camY*0.1)%W), 60*PIX + (i%3)*40*PIX - cy, devicePixelRatio*0.9); }
+    updateHeightChip();
+    for(const b of staticBricks){ drawBrick(ctx,b,false); }
+    for(const b of falling){ drawBrick(ctx,b,true); }
+    renderConfetti();
+    ctx.fillStyle='#86efac'; ctx.fillRect(0, groundY()-80*PIX, W, 80*PIX);
+    drawFlowers(ctx);
+  }
+
+  function loop(){ updateScene(); renderScene(); requestAnimationFrame(loop); }
+  loop();
+
+  function updateHeightChip(){
+    const meters = state.bricks.length * BRICK_HEIGHT_M;
+    const txt = meters>=1000 ? `${(meters/1000).toFixed(2)} km` : `${meters.toFixed(1)} m`;
+    document.getElementById('height-chip').textContent = `Hauteur: ${txt}`;
+    document.getElementById('legend-count').textContent = String(state.bricks.length);
+  }
+
+  // ---------- Badges UI ----------
+  function renderBadges(){
+    const host = document.getElementById('badges');
+    if(!state.badges || !state.badges.length){ host.innerHTML = '<span style="color:#1f2937">Aucun badge pour le moment. Atteins 50 briques !</span>'; return; }
+    host.innerHTML = state.badges.map(b=> `<span class="badge">🏅 ${b.count} <span style="font-size:.8rem;color:#6b7280">(${b.date})</span></span>`).join('');
+  }
+
+  // ---------- Helpers ----------
+  function escapeHtml(s){ return s.replace(/[&<>\"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;','\\'':'&#39;'}[m]) ); }
+
+  // ---------- Wire up ----------
+  document.getElementById('btn-start').title='Démarre la première tâche du jour';
+
+  // Initial renders
+  renderPunishment(); renderTaskTable(); updateStats(); renderDial(); renderBadges();
+  let staticInit = existingBricks(); staticBricks = staticInit;
+
+  // PWA service worker registration
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', ()=> {
+      navigator.serviceWorker.register('sw.js').catch(()=>{});
+    });
+  }
+  </script>
+</body>
+</html>
